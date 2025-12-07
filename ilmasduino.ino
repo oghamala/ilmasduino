@@ -1,6 +1,6 @@
 /* TODO:
  *  
- *  * GITHUB KÄYTTÖÖN
+ *  * GITHUB KÄYTTÖÖN --- OK
  *  
  *  * TUULETTIMEN LOGIIKKA UUSIKSI (katso tarkemmat huomiot sieltä funktiosta) Tarkista myös jääkö turhia muuttujia
  *  
@@ -40,6 +40,8 @@
  *  
  *  * VOLTTIMITTARI (RELEIDEN TOIMINNAN SEURANTA)
  *    >Seuraa, että vaiteet vaihtuu oikein ja poistaa tarvittaessa rikkinäisen releen käytöstä & tallentaa vikakoodin.
+ *    
+ *  * Bluetooth-moduuli toisen BM280:n tilalle tai rinnalle
  *    
  */      
 
@@ -124,8 +126,12 @@ const double HYST_MAX_C     = 5.0;
    Jos korttisi toimii päinvastoin, muuta RELAY_ACTIVE_LEVEL ja RELAY_INACTIVE_LEVEL.
    ========================================================================= */
 
-// TODO: laita tähän oikeat pinnit, joihin relekortti on kiinni
-const uint8_t relayPins[6] = {
+// Käytettävissä olevien releiden määrä
+
+const uint8_t totalRelaySteps = 6;
+
+
+const uint8_t relayPins[totalRelaySteps] = {
   6,  // Porras 1
   7,  // Porras 2
   8,  // Porras 3
@@ -144,8 +150,8 @@ int currentFanStep = 0;
 
 // Nämä näkyvät myös LCD:llä ja napit muuttavat Setpoint ja Hysteresis –arvoa.
 double SetpointTempC = 25.0;      // Tavoitelämpö (C)
-double HysteresisC   = 1.0;       // Hystereesi (C), käytetään tässä vain näyttöön ja
-// halutessasi voit hyödyntää sitä säätölogiikassa myöhemmin.
+double HysteresisC   = 1.0;       // Hystereesi (C)
+double EmergencyThresholdC = 4.0;
 
 // Kuinka usein arvioidaan uusi "haluttu porras"
 // (tässä ei vielä vaihdeta releitä, vain lasketaan logiikkaa)
@@ -153,6 +159,9 @@ const unsigned long CONTROL_INTERVAL_MS = 10000UL;  // 10 s
 
 // Kuinka usein SAA oikeasti vaihtaa releen tilaa
 const unsigned long MIN_RELAY_INTERVAL_MS = 60000UL;  // 1 min, tai 600000UL = 10 min
+
+// Kumpaan suuntaan viimeisin säätö tehtiin, jotta estetään jojoilu hätäsäädössä
+int lastEmergencyRelayChangeDirection = 0;
 
 unsigned long lastControlTime     = 0;
 unsigned long lastRelayChangeTime = 0;
@@ -177,7 +186,7 @@ void setup() {
   lcd.backlight();
   lcd.clear();
   lcd.setCursor(0, 0);
-  lcd.print("GPTtuuletin");
+  lcd.print("Ilmasduino");
   lcd.setCursor(0, 1);
   lcd.print("Kaynnistyy...");
 
@@ -214,7 +223,7 @@ void setup() {
   btnHystDown.begin(BTN_HYST_DOWN_PIN, 25);
 
   // Releet
-  for (uint8_t i = 0; i < 6; i++) {
+  for (uint8_t i = 0; i < totalRelaySteps; i++) {
     pinMode(relayPins[i], OUTPUT);
     digitalWrite(relayPins[i], RELAY_INACTIVE_LEVEL); // alkuun kaikki pois
   }
@@ -287,8 +296,8 @@ void readSensor() {
    KORJATAAN:
 
    *Vaihtaa yhden vaihteen kerrallaan, jos ero on pienehkö
-   *Vaihtaa kaksi vaihdetta kerrallaan, jos ero on iso
-   *Ei vaihda vastakkaiseeen suutaam kahta vaihdetta seuraavalla kerralla, että
+   *Vaihtaa kaksi vaihdetta kerrallaan, jos ero on iso (= Hätäsäätö)
+   *Ei vaihda vastakkaiseeen suutaan kahta vaihdetta seuraavalla kerralla, että
    ei tule "aaltoilua".
    ========================================================================= */
 
@@ -298,10 +307,14 @@ void updateFanControl() {
 
   // 1) Lasketaan, mikä porras olisi järkevä lämpötilapoikkeaman perusteella.
   //    TÄMÄ ON VAIN EHDOTUS (soft-logiikka), sitä ei vielä toteuteta releisiin.
+
+
+  /* TÄMÄ SE POISTETTAVA LOGIIKKA
   int requestedStep = 0;
 
   // Esimerkki: säädä nämä portaat omaan makuun.
-  if (diff > 3.0) {
+
+ if (diff > 3.0) {
     requestedStep = 6;
   } else if (diff > 2.0) {
     requestedStep = 5;
@@ -316,37 +329,52 @@ void updateFanControl() {
   } else {
     // diff <= 0: ollaan setpointin alapuolella tai siellä
     requestedStep = 0;  // tai 1, jos haluat että se ei koskaan täysin pysähdy
+  }*/
+
+  // 1) Tarkastetaan säädön tarve
+
+  int requestedChange = 0;
+
+  if (diff > EmergencyThresholdC && lastEmergencyRelayChangeDirection >= 0) {
+    requestedChange = 2;
+    lastEmergencyRelayChangeDirection = 1;
+    }
+  else if (diff > HysteresisC) {
+    requestedChange = 1;
+  }
+  else if (diff < (EmergencyThresholdC * -1) && lastEmergencyRelayChangeDirection <= 0) {
+    requestedChange = -2;
+    lastEmergencyRelayChangeDirection = -1;
+  }
+  else if (diff < (HysteresisC * -1)) {
+    requestedChange = -1;  
+  }
+  else {
+    requestedChange = 0;
+    lastEmergencyRelayChangeDirection = 0;    
   }
 
-  // 2) Päätetään, SAAKO porras oikeasti vaihtua:
-  //    - ei koskaan useammin kuin MIN_RELAY_INTERVAL_MS
-  //    - lisäksi vaaditaan hystereesi (HysteresisC)
+  // 2) Tarkastetaan ettei mennä säätörajan ulkopuolelle
+  
+  while ((currentFanStep + requestedChange) > totalRelaySteps) {
+    requestedChange--;
+  }
+  while ((currentFanStep + requestedChange) < 0) {
+    requestedChange++;
+  }
+  
+
+
+  // 3) Tarkastetaan onko kulunut tarpeeksi aikaa viimeisimmästä säädöstä
+  
   unsigned long now = millis();
   bool enoughTimePassed = (now - lastRelayChangeTime) >= MIN_RELAY_INTERVAL_MS;
 
-  int newStep = currentFanStep;
-
-  if (enoughTimePassed) {
-    double upperThresh = SetpointTempC + HysteresisC;
-    double lowerThresh = SetpointTempC - HysteresisC;
-
-    // Jos haluttaisiin NOSTAA porrasta (lisää jäähdytystä),
-    // tehdään se vain jos lämpö on SELVÄSTI liian kuuma (yli upperThresh).
-    if (requestedStep > currentFanStep && currentTempC > upperThresh) {
-      newStep = requestedStep;
-    }
-
-    // Jos haluttaisiin LASKEA porrasta (vähemmän jäähdytystä),
-    // tehdään se vain jos lämpö on SELVÄSTI liian kylmä (alle lowerThresh).
-    else if (requestedStep < currentFanStep && currentTempC < lowerThresh) {
-      newStep = requestedStep;
-    }
-  }
-
-  // 3) Toteutetaan porrasvaihto, jos sellainen päätettiin.
-  if (newStep != currentFanStep) {
-    currentFanStep = newStep;
-    applyFanStep(currentFanStep);  // sama funktio kuin ennen
+  // 4) Tehdään säätö tarvittaessa
+  
+  if (enoughTimePassed && requestedChange != 0) {
+    currentFanStep = currentFanStep + requestedChange;
+    applyFanStep(currentFanStep);  // pyydetään alifunktiota suorittamaan säätö
     lastRelayChangeTime = now;
   }
 }
@@ -367,7 +395,7 @@ void updateFanControl() {
    ========================================================================= */
 void applyFanStep(int step) {
   // Aina ensin kaikki releet pois
-  for (uint8_t i = 0; i < 6; i++) {
+  for (uint8_t i = 0; i < totalRelaySteps; i++) {
     digitalWrite(relayPins[i], RELAY_INACTIVE_LEVEL);
   }
 
@@ -376,9 +404,12 @@ void applyFanStep(int step) {
     return;
   }
 
+  // Varoaika kytkentöjen väliin
+  delay(500);
+  
   // Muuten kytke yksi rele päälle (step-1)
   uint8_t idx = step - 1;
-  if (idx < 6) {
+  if (idx < totalRelaySteps) {
     digitalWrite(relayPins[idx], RELAY_ACTIVE_LEVEL);
   }
 }
