@@ -1,49 +1,56 @@
 /* TODO:
- *  
- *  * GITHUB KÄYTTÖÖN --- OK
- *  
- *  * TUULETTIMEN LOGIIKKA UUSIKSI (katso tarkemmat huomiot sieltä funktiosta) Tarkista myös jääkö turhia muuttujia
- *  
- *  * 100 - 1000 ms TAUKO VAIHTOJEN VÄLIIN (Sähköhäiriöiden minimointi)
- *  
- *  * ASETUKSET EEPROMILLE
- *  
- *  * ASETTUSRUUTU
- *  
- *  * NAPPEIHIN "LONGPRESS"-TOIMINTO
- *  
- *  * HISTORIARUUTU (24H Alkuun muistitaulukosta)
- *    >Myös arvojen aaltoilu nähtävä keskiarvojen lisäksi, että releronklaus saadaan parametreja viilaamalla minimiin
- *  
- *  * WS2812 - statusvalot (ja virransäästö näyttöön?)
- *    >Erilaisia värikoodauksia erroreille ja tavoitearvoissa pysymiselle - ehkä vähän sellain pidemmältäkin jaksolta?
- *      -Esim. <90% viim. vrk tavoitearvossa vihreä (ja maks. poikkeama pieni) / yli 60% keltainen / yli 30% oranssi / <30% (ja/tai maks. poikkeama iso) punainen 
- *      -Esim. Alle 12 vaihteen vaihtoa päivässä = vihreä / <24 keltainen / <48 oranssi / >48 punainen
 
- *  
+ *  * GITHUB KÄYTTÖÖN --- OK
+
+ *  * TUULETTIMEN LOGIIKKA UUSIKSI (katso tarkemmat huomiot sieltä funktiosta) Tarkista myös jääkö turhia muuttujia --- OK
+
+ *  * 100 - 1000 ms TAUKO VAIHTOJEN VÄLIIN (Sähköhäiriöiden minimointi) --- OK
+
+ *  * ASETUKSET EEPROMILLE --- OK
+
+ *  * ASETTUSRUUTU --- OK
+
+ *  * BME280 HEITTÄÄ ERRORIN JOKA TOISELLA BOOTILLA - KORJAA? --- lisätty aikaa ja toimii vähän paremmim, muttei vieläkää 100%
+
+ *  * NAPPEIHIN "LONGPRESS"-TOIMINTO
+
+ *  * HISTORIARUUTU (24H Alkuun muistitaulukosta)
+      > Myös arvojen aaltoilu nähtävä keskiarvojen lisäksi, että releronklaus saadaan parametreja viilaamalla minimiin
+
+ *  * WS2812 - statusvalot (ja virransäästö näyttöön?)
+      > Erilaisia värikoodauksia erroreille ja tavoitearvoissa pysymiselle - ehkä vähän sellain pidemmältäkin jaksolta?
+        - Esim. <90% viim. vrk tavoitearvossa vihreä (ja maks. poikkeama pieni) / yli 60% keltainen / yli 30% oranssi / <30% (ja/tai maks. poikkeama iso) punainen
+        - Esim. Alle 12 vaihteen vaihtoa päivässä = vihreä / <24 keltainen / <48 oranssi / >48 punainen
+
+ *  * RELELOGIIKAN TARKISTUS - Onko nykyinen vikasietoinen?
+      > Mitä jos arduinosta katkeaa virta?
+      > Mitä jos jokin rele hirttää kiinni?
+      > Entäs jos relekortista katkeaa virta?
+
+
  *  * GRAAFINEN ESITYSMUOTO HISTORIALLE (Custom characters)
- *  
+
  *  * EEPROMILLE JÄRKEVÄ FORMAATTI (kts. seuraava)
- *    >Tilaa asetuksille (ja grafiikkaelementeille?)
- *    >Varaus myös toiseelle BME280-anturille
- *    >(Varaus volttiarvoille /) virheilmoituksille
- *      -Vikakoodeja ehkä vain yksi tuntiin logiin tai jonkinlainen koodaus, että mikä koodin aiheutti että kaikki mahdolliset saa 1-2 tavuun 
- *    >Ehkä jopa laskee releiden kulumista ja ilmoittaa kun alkaa olla aika vaihtaa??? - Jos siis saa järkevästi jotenkin ilman, että tarvii laskea ja kirjata joka naksu
- *      -Ehkä joku koodaus että 5-10v tulee kevyelläkin täyteen ja kirjaa päivä/viikkotasolla kevyt/keskiraskas/raskas/äärimmäinen
- *    >Tiedostojärjestelmän formaattiversio kirjataan ylös ja kysyttäessä formatoidaan, jos vanha formaatti ei yhteensopiva/tunnistettu
- *      -Hallittu siirtymä uuteen formaattiin!!! (vaikka jollain apuohjelmalla tai Serial-yhteyden avulla toteutetulla siirtoformatoinnilla)  
- *  
+      > Tilaa asetuksille (ja grafiikkaelementeille?)
+      > Varaus myös toiseelle BME280-anturille
+      > (Varaus volttiarvoille /) virheilmoituksille
+        -Vikakoodeja ehkä vain yksi tuntiin logiin tai jonkinlainen koodaus, että mikä koodin aiheutti että kaikki mahdolliset saa 1-2 tavuun
+      > Ehkä jopa laskee releiden kulumista ja ilmoittaa kun alkaa olla aika vaihtaa??? - Jos siis saa järkevästi jotenkin ilman, että tarvii laskea ja kirjata joka naksu
+        -Ehkä joku koodaus että 5-10v tulee kevyelläkin täyteen ja kirjaa päivä/viikkotasolla kevyt/keskiraskas/raskas/äärimmäinen
+      > Tiedostojärjestelmän formaattiversio kirjataan ylös ja kysyttäessä formatoidaan, jos vanha formaatti ei yhteensopiva/tunnistettu
+        -Hallittu siirtymä uuteen formaattiin!!! (vaikka jollain apuohjelmalla tai Serial-yhteyden avulla toteutetulla siirtoformatoinnilla)
+
  *  * PIDEMMÄN AJAN HISTORIA EEPROMILLE (Rengaspuskuri)
- *    >Mahdollisuus tyhjentämiseen ja siirtoon koneelle?
- *      -Älä kuitenkaan nollaa reledataa samalla
- *  
- *  
+      > Mahdollisuus tyhjentämiseen ja siirtoon koneelle?
+        - Älä kuitenkaan nollaa reledataa samalla
+
+
  *  * VOLTTIMITTARI (RELEIDEN TOIMINNAN SEURANTA)
- *    >Seuraa, että vaiteet vaihtuu oikein ja poistaa tarvittaessa rikkinäisen releen käytöstä & tallentaa vikakoodin.
- *    
+      >Seuraa, että vaiteet vaihtuu oikein ja poistaa tarvittaessa rikkinäisen releen käytöstä & tallentaa vikakoodin.
+
  *  * Bluetooth-moduuli toisen BM280:n tilalle tai rinnalle
- *    
- */      
+
+*/
 
 
 
@@ -54,6 +61,11 @@
 #include <hd44780ioClass/hd44780_I2Cexp.h>
 #include <Adafruit_BME280.h>
 #include <GPTbounce.h>
+#include <EEPROM.h>
+
+#define VERSION_MAJOR 0
+#define VERSION_MINOR 3
+#define VERSION_PATCH 0
 
 /* =========================================================================
    I2C-laitteet
@@ -100,22 +112,25 @@ unsigned long lastSensorTime      = 0;
    ========================================================================= */
 
 
-const uint8_t BTN_SET_UP_PIN      = A0;  // Nappi: nosta tavoitelämpöä
-const uint8_t BTN_SET_DOWN_PIN    = A1;  // Nappi: laske tavoitelämpöä
-const uint8_t BTN_HYST_UP_PIN     = A2;  // Nappi: nosta hystereesiä
-const uint8_t BTN_HYST_DOWN_PIN   = A3;  // Nappi: laske hystereesiä
+const uint8_t BTN_BACK_PIN    = A1;  // Nappi: Peruuta
+const uint8_t BTN_MINUS_PIN   = A0;  // Nappi: Pienennä/Ylös valikossa
+const uint8_t BTN_PLUS_PIN    = A3;  // Nappi: Suurenna/Alas valikossa
+const uint8_t BTN_ENTER_PIN   = A2;  // Nappi: Enter
 
-// Yksinkertainen nappien käsittely ilman raskasta debouncausta
-GPTbounce btnSetUp;
-GPTbounce btnSetDown;
-GPTbounce btnHystUp;
-GPTbounce btnHystDown;
+// Nappien käsittely tekoälyn luomalla kirjastolla
+GPTbounce btnBack;
+GPTbounce btnPlus;
+GPTbounce btnMinus;
+GPTbounce btnEnter;
 
 const double SETPOINT_MIN_C = 5.0;
 const double SETPOINT_MAX_C = 35.0;
 
 const double HYST_MIN_C     = 0.1;
 const double HYST_MAX_C     = 5.0;
+
+const uint8_t RELAY_MIN_DELAY = 1;
+const uint8_t RELAY_MAX_DELAY = 60;
 
 /* =========================================================================
    RELEKORTTI / PUHALTIMEN PORTAAT
@@ -146,19 +161,40 @@ const uint8_t relayPins[totalRelaySteps] = {
 // Nykyinen "portaallinen teho" 0–6 (0 = puhallin pois)
 int currentFanStep = 0;
 
-/* LÄMPÖTILA-ASETUS JA SÄÄDÖN INTERVALLI*/
+/* =========================================================================
+   LÄMPÖTILA-ASETUS JA SÄÄDÖN INTERVALLI
+   ========================================================================= */
 
-// Nämä näkyvät myös LCD:llä ja napit muuttavat Setpoint ja Hysteresis –arvoa.
-double SetpointTempC = 25.0;      // Tavoitelämpö (C)
-double HysteresisC   = 1.0;       // Hystereesi (C)
-double EmergencyThresholdC = 4.0;
+const double EmergencyThresholdC = 4.0;
+
+struct Settings {
+  float setpointC;
+  float hysteresisC;
+  uint8_t relayDelay; // minuutteina
+  uint8_t versionMajor;
+  uint8_t versionMinor;
+  uint8_t versionPatch;
+  uint8_t crc;
+};
+
+Settings cfg = {
+  25.0,
+  1.0,
+  1,
+  VERSION_MAJOR,
+  VERSION_MINOR,
+  VERSION_PATCH,
+  0
+};
+
 
 // Kuinka usein arvioidaan uusi "haluttu porras"
 // (tässä ei vielä vaihdeta releitä, vain lasketaan logiikkaa)
-const unsigned long CONTROL_INTERVAL_MS = 10000UL;  // 10 s
+const unsigned long CONTROL_INTERVAL_MS = 60000UL;  // 1 min (Vaikuttaa hätäsäädön jojoilunesto-toimintoon. Aiempi 10s nollasi sen ehkä vähän turhan helposti)
 
-// Kuinka usein SAA oikeasti vaihtaa releen tilaa
-const unsigned long MIN_RELAY_INTERVAL_MS = 60000UL;  // 1 min, tai 600000UL = 10 min
+inline unsigned long getRelayDelayMs() {
+  return (unsigned long)cfg.relayDelay * 60000UL;
+}
 
 // Kumpaan suuntaan viimeisin säätö tehtiin, jotta estetään jojoilu hätäsäädössä
 int lastEmergencyRelayChangeDirection = 0;
@@ -171,6 +207,58 @@ unsigned long lastRelayChangeTime = 0;
    ========================================================================= */
 const unsigned long LCD_UPDATE_INTERVAL_MS = 1000;
 unsigned long lastLcdUpdateTime = 0;
+
+/* =========================================================================
+   GUI
+   ========================================================================= */
+// --- Näkymät ---
+enum UiScreen {
+  SCREEN_HOME = 0,   // kotiruutu
+  SCREEN_MENU,       // asetuslista
+  SCREEN_HISTORY     // historiaruutu (stub toistaiseksi)
+};
+
+UiScreen uiScreen = SCREEN_HOME;
+
+// --- Menun rivit ---
+enum MenuItem {
+  MENU_ITEM_HISTORY = 0,   // "Siirry Historia-ruutuun"
+  MENU_ITEM_SETPOINT,      // tavoitelämpö
+  MENU_ITEM_HYSTERESIS,    // hystereesi
+  MENU_ITEM_MIN_DELAY,     // min. releviive
+};
+
+uint8_t menuIndex = 0;      // mikä rivi valittuna listassa
+
+// --- Editointitila ---
+bool menuEditMode = false;  // false = selaus, true = muokataan numeroarvoa
+
+double editValue = 0.0;     // väliaikainen arvo double-tyyppisille (setpoint, hyst)
+
+// --- Menu-otsikot PROGMEMissa (ei syö RAMia) ---
+const char m0[] PROGMEM = "Historia";        // MENU_ITEM_HISTORY
+const char m1[] PROGMEM = "Tavoite";        // MENU_ITEM_SETPOINT
+const char m2[] PROGMEM = "Vaihtelu";      // MENU_ITEM_HYSTERESIS
+const char m3[] PROGMEM = "Releviive"; // MENU_ITEM_MIN_DELAY
+
+const char* const menuItems[] PROGMEM = {
+  m0, m1, m2, m3
+};
+
+const uint8_t MENU_ITEM_COUNT = sizeof(menuItems) / sizeof(menuItems[0]);
+
+char lcdLine[21]; // 20 merkkiä + 0-terminaattori
+
+bool blinkOn = true;
+unsigned long lastBlinkToggle = 0;
+const unsigned long BLINK_INTERVAL_MS = 500;
+
+
+// --- LCD:n päivitys ---
+bool lcdDirty = true;       // kun true, updateLCD() piirtää heti uudestaan
+
+unsigned long now = 0; // Aika-muuttuja
+
 
 /* =========================================================================
    ALUSTUS
@@ -186,18 +274,27 @@ void setup() {
   lcd.backlight();
   lcd.clear();
   lcd.setCursor(0, 0);
-  lcd.print("Ilmasduino");
+  lcd.print(F("Ilmasduino v"));
+  lcd.print(VERSION_MAJOR);
+  lcd.print(F("."));
+  lcd.print(VERSION_MINOR);
+  lcd.print(F("."));
+  lcd.print(VERSION_PATCH);
   lcd.setCursor(0, 1);
-  lcd.print("Kaynnistyy...");
+  lcd.print(F("Kaynnistyy..."));
 
   // BME280
-  if (!bme.begin(BME280_ADDRESS)) {
-    bmeOK = false;
-    lcd.setCursor(0, 2);
-    lcd.print("BME280 ei loydy!");
-    Serial.println(F("BME280 ei loydy annetusta osoitteesta."));
-  } else {
-    bmeOK = true;
+  lcd.setCursor(0, 2);
+  lcd.print(F("BME280"));
+  for (int i = 0; i < 5; i++) {
+    if (bme.begin(BME280_ADDRESS)) {
+      bmeOK = true;
+      break;
+    }
+    lcd.print(F("."));
+    delay(1000);
+  }
+  if (bmeOK) {
     // Asetetaan BME280 forced-moodiin:
     // - MODE_FORCED: ei jatkuvaa mittausta, vaan yksi mittaus kerrallaan
     // - Kohtuullinen oversampling -> ei turhaa kuumenemista
@@ -209,18 +306,19 @@ void setup() {
       Adafruit_BME280::FILTER_OFF          // ei sisäistä suodatinta -> nopea reaktio
     );
 
-    lcd.setCursor(0, 2);
-    lcd.print("BME280 OK osoite:");
-    lcd.setCursor(0, 3);
-    lcd.print("0x");
+    lcd.print(F(" OK! "));
+    lcd.print(F("0x"));
     lcd.print(BME280_ADDRESS, HEX);
+  } else {
+    lcd.print(F("VIRHE!"));
+    while (1);
   }
 
   // Nappulat INPUT_PULLUP
-  btnSetUp.begin(BTN_SET_UP_PIN, 25);     // 25 ms debounce
-  btnSetDown.begin(BTN_SET_DOWN_PIN, 25);
-  btnHystUp.begin(BTN_HYST_UP_PIN, 25);
-  btnHystDown.begin(BTN_HYST_DOWN_PIN, 25);
+  btnBack.begin(BTN_BACK_PIN, 25);     // 25 ms debounce
+  btnPlus.begin(BTN_PLUS_PIN, 25);
+  btnMinus.begin(BTN_MINUS_PIN, 25);
+  btnEnter.begin(BTN_ENTER_PIN, 25);
 
   // Releet
   for (uint8_t i = 0; i < totalRelaySteps; i++) {
@@ -228,7 +326,11 @@ void setup() {
     digitalWrite(relayPins[i], RELAY_INACTIVE_LEVEL); // alkuun kaikki pois
   }
 
-  delay(2000);
+  if(!loadSettings()) {
+    saveSettings(); // kirjoita oletukset EEPROMiin koska CRC puuttuu
+  }
+
+  delay(5000);
   lcd.clear();
 }
 
@@ -236,146 +338,102 @@ void setup() {
    PÄÄSILMUKKA
    ========================================================================= */
 void loop() {
-  unsigned long now = millis();
+  now = millis();
 
+  updateButtons();
 
-  // 1) Lue nappulat ja päivitä asetukset
-  btnSetUp.update();
-  btnSetDown.update();
-  btnHystUp.update();
-  btnHystDown.update();
+  handleUI();
 
-  handleButtons();
+  handleSensor();
 
-  // 2) Anturiluku BME280 forced -tilassa harvakseltaan
-  if (now - lastSensorTime >= SENSOR_INTERVAL_MS) {
-    lastSensorTime = now;
-    readSensor();    // käyttää bme.takeForcedMeasurement() + readTemperature/readHumidity
-  }
+  handleFanControl();
 
-  // 3) Ohjauslogiikka (määrittelee halutun portaan, mutta ei vielä räpsi releitä liian usein)
-  if (now - lastControlTime >= CONTROL_INTERVAL_MS) {
-    lastControlTime = now;
-    updateFanControl();   // uusi funktio, katso alla
-  }
+  // updateHistory();
 
-  // 4) LCD päivitys
-  if (now - lastLcdUpdateTime >= LCD_UPDATE_INTERVAL_MS) {
-    lastLcdUpdateTime = now;
-    updateLCD();
-  }
+  updateDisplay();
+
 }
 
 /* =========================================================================
    SENSORIN LUKU
    ========================================================================= */
-void readSensor() {
-  if (!bmeOK) {
-    // Ei anturia -> jätetään arvot ennalleen
-    return;
+void handleSensor() {
+  if (now - lastSensorTime >= SENSOR_INTERVAL_MS) {
+    lastSensorTime = now;
+    if (!bmeOK) {
+      // Ei anturia -> jätetään arvot ennalleen
+      return;
+    }
+    // FORCE-tila:
+    // 1) Käsketään sensoria tekemään yksi mittaus
+    // 2) takeForcedMeasurement() blokkaa kunnes data on valmis
+    // 3) Tämän ansiosta sensori ei rouski mittauksia koko ajan taustalla (ja lämmitä itseään)
+
+    bme.takeForcedMeasurement();
+
+    currentTempC = bme.readTemperature();
+    currentHumRH = bme.readHumidity();
   }
-  // FORCE-tila:
-  // 1) Käsketään sensoria tekemään yksi mittaus
-  // 2) takeForcedMeasurement() blokkaa kunnes data on valmis
-  // 3) Tämän ansiosta sensori ei rouski mittauksia koko ajan taustalla (ja lämmitä itseään)
-
-  bme.takeForcedMeasurement();
-
-  currentTempC = bme.readTemperature();
-  currentHumRH = bme.readHumidity();
-
 }
 
 /* =========================================================================
    TUULETTIMEN SÄÄTÖ
-
-   Tämä toimii nyt ihan pitkin vittua. Logiikka siis tällä hetkellä se, että 
-   tavoite on aina päästä 0 vaihteelle ja säädetään vaan, että millä nopeudella
-   sinne mennään.
-
-   KORJATAAN:
-
-   *Vaihtaa yhden vaihteen kerrallaan, jos ero on pienehkö
-   *Vaihtaa kaksi vaihdetta kerrallaan, jos ero on iso (= Hätäsäätö)
-   *Ei vaihda vastakkaiseeen suutaan kahta vaihdetta seuraavalla kerralla, että
-   ei tule "aaltoilua".
    ========================================================================= */
 
-void updateFanControl() {
-  // Erotus setpointtiin
-  double diff = currentTempC - SetpointTempC;  // >0 = liian kuuma, <0 = liian kylmä
+void handleFanControl() {
+  if (now - lastControlTime >= CONTROL_INTERVAL_MS) {
+    lastControlTime = now;
+    // Erotus setpointtiin
+    double diff = currentTempC - cfg.setpointC;  // >0 = liian kuuma, <0 = liian kylmä
 
-  // 1) Lasketaan, mikä porras olisi järkevä lämpötilapoikkeaman perusteella.
-  //    TÄMÄ ON VAIN EHDOTUS (soft-logiikka), sitä ei vielä toteuteta releisiin.
+    // 1) Tarkastetaan säädön tarve
 
+    int requestedChange = 0;
 
-  /* TÄMÄ SE POISTETTAVA LOGIIKKA
-  int requestedStep = 0;
-
-  // Esimerkki: säädä nämä portaat omaan makuun.
-
- if (diff > 3.0) {
-    requestedStep = 6;
-  } else if (diff > 2.0) {
-    requestedStep = 5;
-  } else if (diff > 1.5) {
-    requestedStep = 4;
-  } else if (diff > 1.0) {
-    requestedStep = 3;
-  } else if (diff > 0.5) {
-    requestedStep = 2;
-  } else if (diff > 0.0) {
-    requestedStep = 1;
-  } else {
-    // diff <= 0: ollaan setpointin alapuolella tai siellä
-    requestedStep = 0;  // tai 1, jos haluat että se ei koskaan täysin pysähdy
-  }*/
-
-  // 1) Tarkastetaan säädön tarve
-
-  int requestedChange = 0;
-
-  if (diff > EmergencyThresholdC && lastEmergencyRelayChangeDirection >= 0) {
-    requestedChange = 2;
-    lastEmergencyRelayChangeDirection = 1;
+    if (diff > EmergencyThresholdC && lastEmergencyRelayChangeDirection >= 0) {
+      requestedChange = 2;
+      lastEmergencyRelayChangeDirection = 1;
     }
-  else if (diff > HysteresisC) {
-    requestedChange = 1;
-  }
-  else if (diff < (EmergencyThresholdC * -1) && lastEmergencyRelayChangeDirection <= 0) {
-    requestedChange = -2;
-    lastEmergencyRelayChangeDirection = -1;
-  }
-  else if (diff < (HysteresisC * -1)) {
-    requestedChange = -1;  
-  }
-  else {
-    requestedChange = 0;
-    lastEmergencyRelayChangeDirection = 0;    
-  }
+    else if (diff > cfg.hysteresisC) {
+      requestedChange = 1;
+    }
+    else if (diff < (EmergencyThresholdC * -1) && lastEmergencyRelayChangeDirection <= 0) {
+      requestedChange = -2;
+      lastEmergencyRelayChangeDirection = -1;
+    }
+    else if (diff < (cfg.hysteresisC * -1)) {
+      requestedChange = -1;
+    }
+    else {
+      requestedChange = 0;
+      lastEmergencyRelayChangeDirection = 0;
+    }
 
-  // 2) Tarkastetaan ettei mennä säätörajan ulkopuolelle
-  
-  while ((currentFanStep + requestedChange) > totalRelaySteps) {
-    requestedChange--;
-  }
-  while ((currentFanStep + requestedChange) < 0) {
-    requestedChange++;
-  }
-  
+    // 2) Tarkastetaan ettei mennä säätörajan ulkopuolelle
+
+    while ((currentFanStep + requestedChange) > totalRelaySteps) {
+      requestedChange--;
+    }
+    while ((currentFanStep + requestedChange) < 0) {
+      requestedChange++;
+    }
 
 
-  // 3) Tarkastetaan onko kulunut tarpeeksi aikaa viimeisimmästä säädöstä
-  
-  unsigned long now = millis();
-  bool enoughTimePassed = (now - lastRelayChangeTime) >= MIN_RELAY_INTERVAL_MS;
 
-  // 4) Tehdään säätö tarvittaessa
-  
-  if (enoughTimePassed && requestedChange != 0) {
-    currentFanStep = currentFanStep + requestedChange;
-    applyFanStep(currentFanStep);  // pyydetään alifunktiota suorittamaan säätö
-    lastRelayChangeTime = now;
+    // 3) Tarkastetaan onko kulunut tarpeeksi aikaa viimeisimmästä säädöstä
+
+    bool enoughTimePassed = (now - lastRelayChangeTime) >= getRelayDelayMs();
+
+    // 4) Tehdään säätö tarvittaessa
+
+    if (enoughTimePassed && requestedChange != 0) {
+      currentFanStep = currentFanStep + requestedChange;
+
+      // TÄHÄN VÄLIIN MINIMIN TARKISTUS JOS HALUAA ETTÄ SE EI IKINÄ SAMMU KOKONAAN?
+
+      applyFanStep(currentFanStep);  // pyydetään alifunktiota suorittamaan säätö
+      lastRelayChangeTime = now;
+    }
   }
 }
 
@@ -406,7 +464,7 @@ void applyFanStep(int step) {
 
   // Varoaika kytkentöjen väliin
   delay(500);
-  
+
   // Muuten kytke yksi rele päälle (step-1)
   uint8_t idx = step - 1;
   if (idx < totalRelaySteps) {
@@ -421,39 +479,250 @@ void applyFanStep(int step) {
    - Tässä luetaan vain .fell() = “yksi klikki” per painallus.
    - Pitkiä painalluksia tai autorepeatia voi lisätä myöhemmin .isPressed():lla.
    ========================================================================= */
-void handleButtons() {
-  // Painallus = yksi "fell" per todellinen painallus, vaikka nappi tärisisi
-  if (btnSetUp.fell()) {
-    SetpointTempC += 0.5;
+void updateButtons() {
+
+  btnBack.update();
+  btnPlus.update();
+  btnMinus.update();
+  btnEnter.update();
+
+}
+
+void handleUI() {
+  // Luetaan yhden kierroksen "edge"-tapahtumat
+  bool backPressed  = btnBack.fell();
+  bool plusPressed  = btnPlus.fell();
+  bool minusPressed = btnMinus.fell();
+  bool enterPressed = btnEnter.fell();
+
+  switch (uiScreen) {
+    case SCREEN_HOME:
+      handleUiHome(backPressed, plusPressed, minusPressed, enterPressed);
+      break;
+
+    case SCREEN_MENU:
+      handleUiMenu(backPressed, plusPressed, minusPressed, enterPressed);
+      break;
+
+    case SCREEN_HISTORY:
+      handleUiHistory(backPressed, plusPressed, minusPressed, enterPressed);
+      break;
+  }
+}
+
+void handleUiHome(bool back, bool plus, bool minus, bool enter) {
+  // Back ei tee kotiruudussa mitään (voi lisätä myöhemmin jonkun toiminnon)
+
+  if (minus) {
+    cfg.setpointC -= 0.5;
+    if (cfg.setpointC < SETPOINT_MIN_C) cfg.setpointC = SETPOINT_MIN_C;
+    lcdDirty = true;
   }
 
-  if (btnSetDown.fell()) {
-    SetpointTempC -= 0.5;
+  if (plus) {
+    cfg.setpointC += 0.5;   // tai cfg.setpointC, jos käytät structia
+    if (cfg.setpointC > SETPOINT_MAX_C) cfg.setpointC = SETPOINT_MAX_C;
+    lcdDirty = true;
   }
 
-  // Clamp setpoint
-  if (SetpointTempC < SETPOINT_MIN_C) SetpointTempC = SETPOINT_MIN_C;
-  if (SetpointTempC > SETPOINT_MAX_C) SetpointTempC = SETPOINT_MAX_C;
 
-  if (btnHystUp.fell()) {
-    HysteresisC += 0.1;
+  if (enter) {
+    uiScreen = SCREEN_MENU;
+    menuIndex = 0;
+    menuEditMode = false;
+    lcdDirty = true;
   }
+}
 
-  if (btnHystDown.fell()) {
-    HysteresisC -= 0.1;
-    if (HysteresisC < 0.1) {
-      HysteresisC = 0.1;
+void handleUiMenu(bool back, bool plus, bool minus, bool enter) {
+  if (!menuEditMode) {
+    // --- SELAUSMoodi ---
+    if (back) {
+      // Takaisin kotiruutuun
+      uiScreen = SCREEN_HOME;
+      lcdDirty = true;
+      return;
     }
+
+    // MINUS = "alas" listalla
+    if (minus) {
+      if (menuIndex == 0) {
+        menuIndex = MENU_ITEM_COUNT - 1;
+      } else {
+        menuIndex--;
+      }
+      lcdDirty = true;
+    }
+
+    // PLUS = "alas" listalla
+    if (plus) {
+      menuIndex++;
+      if (menuIndex >= MENU_ITEM_COUNT) {
+        menuIndex = 0;
+      }
+      lcdDirty = true;
+    }
+
+
+    if (enter) {
+      // MENU valinta:
+      if (menuIndex == MENU_ITEM_HISTORY) {
+        // Siirry historiaruutuun (stub toistaiseksi)
+        uiScreen = SCREEN_HISTORY;
+        lcdDirty = true;
+      } else {
+        // Mennään editointitilaan valitun asetuksen kanssa
+        startEditForCurrentMenuItem();
+        menuEditMode = true;
+        lcdDirty = true;
+      }
+    }
+  } else {
+    // --- EDIT-moodi ---
+    handleUiMenuEdit(back, plus, minus, enter);
+  }
+}
+
+void startEditForCurrentMenuItem() {
+  switch (menuIndex) {
+    case MENU_ITEM_SETPOINT:
+      editValue = cfg.setpointC;   // tai cfg.setpointC
+      break;
+
+    case MENU_ITEM_HYSTERESIS:
+      editValue = cfg.hysteresisC;     // tai cfg.hysteresisC
+      break;
+
+    case MENU_ITEM_MIN_DELAY:
+      editValue = cfg.relayDelay;  // suoraan minuutit
+      break;
+  }
+}
+
+void handleUiMenuEdit(bool back, bool plus, bool minus, bool enter) {
+  // Numeroarvon säätö
+
+
+  if (minus) {
+    switch (menuIndex) {
+      case MENU_ITEM_SETPOINT:
+        editValue -= 0.5;
+        if (editValue < SETPOINT_MIN_C) editValue = SETPOINT_MIN_C;
+        break;
+      case MENU_ITEM_HYSTERESIS:
+        editValue -= 0.1;
+        if (editValue < HYST_MIN_C) editValue = HYST_MIN_C;
+        break;
+      case MENU_ITEM_MIN_DELAY:
+        if (editValue > RELAY_MIN_DELAY) {
+          editValue -= 1;
+        }
+        break;
+    }
+    lcdDirty = true;
   }
 
-  // Clamp hystereesi
-  if (HysteresisC < HYST_MIN_C) HysteresisC = HYST_MIN_C;
-  if (HysteresisC > HYST_MAX_C) HysteresisC = HYST_MAX_C;
+  if (plus) {
+    switch (menuIndex) {
+      case MENU_ITEM_SETPOINT:
+        editValue += 0.5;   // askelkoko
+        if (editValue > SETPOINT_MAX_C) editValue = SETPOINT_MAX_C;
+        break;
+      case MENU_ITEM_HYSTERESIS:
+        editValue += 0.1;
+        if (editValue > HYST_MAX_C) editValue = HYST_MAX_C;
+        break;
+      case MENU_ITEM_MIN_DELAY:
+        if (editValue < RELAY_MAX_DELAY) {
+          editValue += 1;
+        }
+        break;
+    }
+    lcdDirty = true;
+  }
+
+  // BACK: peruuta, palaa selaustilaan muuttamatta asetuksia
+  if (back) {
+    menuEditMode = false;
+    lcdDirty = true;
+    return;
+  }
+
+  // ENTER: hyväksy, kopioi editValue -> varsinaisiin asetuksiin
+  if (enter) {
+    switch (menuIndex) {
+      case MENU_ITEM_SETPOINT:
+        cfg.setpointC = editValue;
+        break;
+      case MENU_ITEM_HYSTERESIS:
+        cfg.hysteresisC = editValue;
+        break;
+      case MENU_ITEM_MIN_DELAY:
+        cfg.relayDelay = (uint8_t)(editValue + 0.5);
+        break;
+    }
+
+    menuEditMode = false;
+    
+    saveSettings();
+    
+    lcdDirty = true;
+  }
+}
+
+void handleUiHistory(bool back, bool plus, bool minus, bool enter) {
+  // Toistaiseksi: ainoa järkevä toiminto on Back -> takaisin kotiruutuun
+  if (back || enter) {
+    uiScreen = SCREEN_HOME;
+    lcdDirty = true;
+  }
+}
+
+void getMenuLabel(uint8_t index, char *dst, uint8_t dstSize) {
+  if (index >= MENU_ITEM_COUNT) {
+    if (dstSize > 0) dst[0] = '\0';
+    return;
+  }
+  strncpy_P(dst, (PGM_P)pgm_read_word(&menuItems[index]), dstSize);
+  dst[dstSize - 1] = '\0';
 }
 
 
-// Halutessasi voit käyttää myös "painallus pohjassa" -toimintoa:
-// if (btnSetUp.isPressed()) { ... nopeampi muutos pitkällä painalluksella ... }}
+
+void updateDisplay() {
+  // vilkutuslogiikka edit-tilaa varten
+  if (uiScreen == SCREEN_MENU && menuEditMode) {
+    if (now - lastBlinkToggle >= BLINK_INTERVAL_MS) {
+      lastBlinkToggle = now;
+      blinkOn = !blinkOn;
+      drawMenuSelectedValueOnly();
+    }
+  }
+
+  // jos mikään ei ole muuttunut eikä vilkutus vaadi piirtämistä -> ulos
+  if (!lcdDirty) {
+    return;
+  }
+
+  lcdDirty = false;   // tyhjennetään flagi heti, ettei jää kellumaan
+
+  lcd.clear();
+
+  switch (uiScreen) {
+    case SCREEN_HOME:
+      drawHomeScreen();
+      break;
+
+    case SCREEN_MENU:
+      drawMenuScreen();
+      break;
+
+    case SCREEN_HISTORY:
+      drawHistoryScreen();
+      break;
+  }
+}
+
 
 /* =========================================================================
    LCD:N PÄIVITYS
@@ -464,35 +733,241 @@ void handleButtons() {
    Rivi 2: Puhaltimen porras
    Rivi 3: dT (ero setpointtiin) ja hystereesi
    ========================================================================= */
-void updateLCD() {
+void drawHomeScreen() {
   lcd.setCursor(0, 0);
-  lcd.print("T:");
+  lcd.print(F("T:"));
   lcd.print(currentTempC, 1);
   lcd.print((char)223);   // aste-merkki
-  lcd.print("C  ");
-  lcd.print("RH:");
+  lcd.print(F("C  "));
+  lcd.print(F("RH:"));
   lcd.print(currentHumRH, 1);
-  lcd.print("%   ");
+  lcd.print(F("%   "));
 
   lcd.setCursor(0, 1);
-  lcd.print("Set:");
-  lcd.print(SetpointTempC, 1);
-  lcd.print((char)223);
-  lcd.print("C ");
-  lcd.print("Hy:");
-  lcd.print(HysteresisC, 1);
-  lcd.print("C   ");
-
-  lcd.setCursor(0, 2);
-  lcd.print("Fan step: ");
+  lcd.print(F("Fan step: "));
   lcd.print(currentFanStep);
-  lcd.print("      ");   // tyhjennä loppu
+  lcd.print(F("      "));   // tyhjennä loppu
 
   lcd.setCursor(0, 3);
-  lcd.print("dT:");
-  lcd.print(currentTempC - SetpointTempC, 1);
+  lcd.print(F("SetT:"));
+  lcd.print(cfg.setpointC, 1);
   lcd.print((char)223);
-  lcd.print("C Hy:");
-  lcd.print(HysteresisC, 1);
-  lcd.print("C  ");
+  lcd.print(F("C "));
+  lcd.print(F("Hy:"));
+  lcd.print(cfg.hysteresisC, 1);
+  lcd.print((char)223);
+  lcd.print(F("C"));
+}
+
+void drawMenuScreen() {
+  // Selvitä, mikä item näkyy ylimmällä rivillä (scrollaus)
+  uint8_t firstVisible = 0;
+  const uint8_t maxVisible = 4;
+
+  if (MENU_ITEM_COUNT > maxVisible) {
+    if (menuIndex <= 1) {
+      firstVisible = 0;
+    } else if (menuIndex >= MENU_ITEM_COUNT - 2) {
+      firstVisible = MENU_ITEM_COUNT - maxVisible;
+    } else {
+      firstVisible = menuIndex - 1;
+    }
+  }
+
+  for (uint8_t row = 0; row < maxVisible; row++) {
+    uint8_t idx = firstVisible + row;
+
+    // 1) Tyhjennä rivi kokonaan
+    lcd.setCursor(0, row);
+    lcd.print(F("                    "));  // 20 välilyöntiä
+    lcd.setCursor(0, row);            // takaisin rivin alkuun
+
+    if (idx >= MENU_ITEM_COUNT) {
+      continue; // ei mitään tälle riville
+    }
+
+    bool isSelected = (idx == menuIndex);
+    bool useEditVal = (menuEditMode && isSelected);
+
+    // 2) Nuoli + label vasemmalle
+    lcd.print(isSelected ? '>' : ' ');
+
+    getMenuLabel(idx, lcdLine, sizeof(lcdLine));
+    lcd.print(lcdLine);
+
+    // 3) Arvot kiinteästä kolumnista eteenpäin
+    const uint8_t colVal = 14;
+    lcd.setCursor(colVal, row);
+
+    switch (idx) {
+      case MENU_ITEM_HISTORY:
+        lcd.print(F("->"));
+        break;
+
+      case MENU_ITEM_SETPOINT: {
+          double v = useEditVal ? editValue : cfg.setpointC;
+          int ip = (int)v;          // kokonaisosa
+          if (ip < 10) {
+            lcd.print(' ');         // yksi space eteen, jos yksinumeroinen
+          }
+          lcd.print(v, 1);          // esim. "25.0"
+          lcd.print((char)223);     // aste
+          lcd.print('C');
+          break;
+        }
+
+      case MENU_ITEM_HYSTERESIS: {
+          double v = useEditVal ? editValue : cfg.hysteresisC;
+          int ip = (int)v;
+          if (ip < 10) {
+            lcd.print(' ');
+          }
+          lcd.print(v, 1);          // "1.0"
+          lcd.print((char)223);     // aste
+          lcd.print('C');
+          break;
+        }
+
+      case MENU_ITEM_MIN_DELAY: {
+          // editValue = double, cfg.relayDelay = uint8_t (minuutteja)
+          uint8_t v = useEditVal
+                      ? (uint8_t)(editValue + 0.5)
+                      : cfg.relayDelay;
+
+          // 1–9  -> " 5min"
+          // 10–99-> "15min"
+          if (v < 10) {
+            lcd.print(' ');
+          }
+          lcd.print(v);
+          lcd.print(F(" min"));
+          break;
+        }
+    }
+  }
+}
+
+
+void drawHistoryScreen() {
+  lcd.setCursor(0, 0);
+  lcd.print(F("Historia (tulossa)"));
+  lcd.setCursor(0, 2);
+  lcd.print(F("BACK: kotiin"));
+}
+
+void drawMenuSelectedValueOnly() {
+  // Sama scrollilogiikka kuin drawMenuScreenissä, jotta löydetään valitun rivin row
+  const uint8_t maxVisible = 4;
+  uint8_t firstVisible = 0;
+
+  if (MENU_ITEM_COUNT > maxVisible) {
+    if (menuIndex <= 1) {
+      firstVisible = 0;
+    } else if (menuIndex >= MENU_ITEM_COUNT - 2) {
+      firstVisible = MENU_ITEM_COUNT - maxVisible;
+    } else {
+      firstVisible = menuIndex - 1;
+    }
+  }
+
+  // Laske, millä rivillä valittu item on
+  int8_t row = (int8_t)menuIndex - (int8_t)firstVisible;
+  if (row < 0 || row >= (int8_t)maxVisible) return; // ei ruudulla
+
+  const uint8_t col = 14; // missä numerot alkaa
+
+  lcd.setCursor(col, row);
+
+  if (!blinkOn) {
+    // piilota arvo vilkutuksen OFF-vaiheessa
+    for (uint8_t i = col; i < 20; i++) {
+      lcd.print(' ');
+    }
+    return;
+  }
+
+  // blinkOn == true -> printataan arvo (editValue)
+  switch (menuIndex) {
+    case MENU_ITEM_SETPOINT:
+      if (editValue < 10) lcd.print(' ');
+      lcd.print(editValue, 1);
+      lcd.print((char)223);
+      lcd.print('C');
+      break;
+
+    case MENU_ITEM_HYSTERESIS:
+      if (editValue < 10) lcd.print(' ');
+      lcd.print(editValue, 1);
+      lcd.print((char)223);
+      lcd.print('C');
+      break;
+
+    case MENU_ITEM_MIN_DELAY:
+      if (editValue < 10) lcd.print(' ');
+      lcd.print(editValue, 0);
+      lcd.print(F(" min"));
+      break;
+
+    default:
+      break;
+  }
+
+/*  // tyhjennä rivin loppu, jos jäi roskaa
+  int len = 20 - col - 3; // vähän tilaa
+  for (int i = 0; i < len; i++) {
+    lcd.print(' ');
+  }*/
+}
+
+void saveSettings() {
+//  dumpSettings(cfg, F("Ennen CRC:tä (RAM)"));
+
+  cfg.crc = calcCRC((uint8_t*)&cfg, sizeof(Settings) - 1); // CRC viimeiseen tavuun
+
+//  Serial.print(F("Tallennus alkaa - crc = "));
+//  Serial.println(cfg.crc);
+
+  EEPROM.put(0, cfg);
+
+/*  Serial.println(F("Tallennus valmis"));
+
+  // Lue takaisin heti ja dumppaa, niin näet mitä oikeasti meni EEPROMiin
+  Settings verify;
+  EEPROM.get(0, verify);
+  dumpSettings(verify, F("Luettu heti EEPROMista"));
+  */
+}
+
+/*
+void dumpSettings(const Settings &s, const __FlashStringHelper *tag) {
+  Serial.println(tag);
+  Serial.print(F("  setpointC   = ")); Serial.println(s.setpointC, 3);
+  Serial.print(F("  hysteresisC = ")); Serial.println(s.hysteresisC, 3);
+  Serial.print(F("  relayDelay  = ")); Serial.println(s.relayDelay);
+  Serial.print(F("  version     = "));
+  Serial.print(s.versionMajor); Serial.print('.');
+  Serial.print(s.versionMinor); Serial.print('.');
+  Serial.println(s.versionPatch);
+  Serial.print(F("  crc         = ")); Serial.println(s.crc);
+}*/
+
+bool loadSettings() {
+  Settings tmp;
+  EEPROM.get(0, tmp);
+
+  uint8_t calc = calcCRC((uint8_t*)&tmp, sizeof(Settings) - 1);
+
+  if (calc != tmp.crc) {
+    Serial.println("EEPROM CRC FAIL -> Using defaults");
+    return false;       // käytetään cfg defaultteja
+  }
+
+  cfg = tmp;            // validi, kopioi käyttöön
+  return true;
+}
+
+uint8_t calcCRC(uint8_t *data, uint16_t len) {
+  uint8_t crc = 0;
+  while (len--) crc ^= *data++; // XOR CRC
+  return crc;
 }
