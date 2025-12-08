@@ -65,7 +65,7 @@
 
 #define VERSION_MAJOR 0
 #define VERSION_MINOR 3
-#define VERSION_PATCH 0
+#define VERSION_PATCH 1
 
 /* =========================================================================
    I2C-laitteet
@@ -171,6 +171,7 @@ struct Settings {
   float setpointC;
   float hysteresisC;
   uint8_t relayDelay; // minuutteina
+  uint8_t allowFanOff;
   uint8_t versionMajor;
   uint8_t versionMinor;
   uint8_t versionPatch;
@@ -220,12 +221,21 @@ enum UiScreen {
 
 UiScreen uiScreen = SCREEN_HOME;
 
+// --- Menun asetukset ---
+
+const uint8_t MENU_VISIBLE_ROWS = 4;
+const uint8_t MENU_VALUE_COL    = 14;
+
+// --- Ylimmän näkyvän menukohtan indeksi (scroll-ikkuna) ---
+uint8_t menuFirstVisible = 0;
+
 // --- Menun rivit ---
 enum MenuItem {
   MENU_ITEM_HISTORY = 0,   // "Siirry Historia-ruutuun"
   MENU_ITEM_SETPOINT,      // tavoitelämpö
   MENU_ITEM_HYSTERESIS,    // hystereesi
   MENU_ITEM_MIN_DELAY,     // min. releviive
+  MENU_ITEM_ALLOW_FAN_OFF  // Salli tuulettimen sammutus
 };
 
 uint8_t menuIndex = 0;      // mikä rivi valittuna listassa
@@ -236,13 +246,14 @@ bool menuEditMode = false;  // false = selaus, true = muokataan numeroarvoa
 double editValue = 0.0;     // väliaikainen arvo double-tyyppisille (setpoint, hyst)
 
 // --- Menu-otsikot PROGMEMissa (ei syö RAMia) ---
-const char m0[] PROGMEM = "Historia";        // MENU_ITEM_HISTORY
-const char m1[] PROGMEM = "Tavoite";        // MENU_ITEM_SETPOINT
-const char m2[] PROGMEM = "Vaihtelu";      // MENU_ITEM_HYSTERESIS
-const char m3[] PROGMEM = "Releviive"; // MENU_ITEM_MIN_DELAY
+const char m0[] PROGMEM = "Historia";         // MENU_ITEM_HISTORY
+const char m1[] PROGMEM = "Tavoite";          // MENU_ITEM_SETPOINT
+const char m2[] PROGMEM = "Vaihtelu";         // MENU_ITEM_HYSTERESIS
+const char m3[] PROGMEM = "Releviive";        // MENU_ITEM_MIN_DELAY
+const char m4[] PROGMEM = "Salli Fan Off";    // MENU_ITEM_ALLOW_FAN_OFF
 
 const char* const menuItems[] PROGMEM = {
-  m0, m1, m2, m3
+  m0, m1, m2, m3, m4
 };
 
 const uint8_t MENU_ITEM_COUNT = sizeof(menuItems) / sizeof(menuItems[0]);
@@ -255,7 +266,8 @@ const unsigned long BLINK_INTERVAL_MS = 500;
 
 
 // --- LCD:n päivitys ---
-bool lcdDirty = true;       // kun true, updateLCD() piirtää heti uudestaan
+bool needFullRedraw  = true;  // koko ruutu uusiksi (layout + arvot)
+bool needValuesRedraw = true; // vain dynaamiset arvot / nuoli
 
 unsigned long now = 0; // Aika-muuttuja
 
@@ -326,7 +338,7 @@ void setup() {
     digitalWrite(relayPins[i], RELAY_INACTIVE_LEVEL); // alkuun kaikki pois
   }
 
-  if(!loadSettings()) {
+  if (!loadSettings()) {
     saveSettings(); // kirjoita oletukset EEPROMiin koska CRC puuttuu
   }
 
@@ -383,11 +395,11 @@ void handleSensor() {
 void handleFanControl() {
   if (now - lastControlTime >= CONTROL_INTERVAL_MS) {
     lastControlTime = now;
+
     // Erotus setpointtiin
     double diff = currentTempC - cfg.setpointC;  // >0 = liian kuuma, <0 = liian kylmä
 
     // 1) Tarkastetaan säädön tarve
-
     int requestedChange = 0;
 
     if (diff > EmergencyThresholdC && lastEmergencyRelayChangeDirection >= 0) {
@@ -411,25 +423,28 @@ void handleFanControl() {
 
     // 2) Tarkastetaan ettei mennä säätörajan ulkopuolelle
 
-    while ((currentFanStep + requestedChange) > totalRelaySteps) {
-      requestedChange--;
-    }
-    while ((currentFanStep + requestedChange) < 0) {
-      requestedChange++;
+    int targetStep = currentFanStep + requestedChange;
+
+    int minStep = cfg.allowFanOff ? 0 : 1;
+
+    if (targetStep < minStep)        targetStep = minStep;
+    if (targetStep > totalRelaySteps) targetStep = totalRelaySteps;
+
+    // Jos logiikka ei halua muutosta (ja clämpäys ei muuta mitään), ei tehdä mitään
+    if (targetStep == currentFanStep) {
+      return;
     }
 
 
 
     // 3) Tarkastetaan onko kulunut tarpeeksi aikaa viimeisimmästä säädöstä
-
     bool enoughTimePassed = (now - lastRelayChangeTime) >= getRelayDelayMs();
 
     // 4) Tehdään säätö tarvittaessa
 
-    if (enoughTimePassed && requestedChange != 0) {
-      currentFanStep = currentFanStep + requestedChange;
 
-      // TÄHÄN VÄLIIN MINIMIN TARKISTUS JOS HALUAA ETTÄ SE EI IKINÄ SAMMU KOKONAAN?
+    if (enoughTimePassed && currentFanStep != targetStep) {
+      currentFanStep = targetStep;
 
       applyFanStep(currentFanStep);  // pyydetään alifunktiota suorittamaan säätö
       lastRelayChangeTime = now;
@@ -516,21 +531,24 @@ void handleUiHome(bool back, bool plus, bool minus, bool enter) {
   if (minus) {
     cfg.setpointC -= 0.5;
     if (cfg.setpointC < SETPOINT_MIN_C) cfg.setpointC = SETPOINT_MIN_C;
-    lcdDirty = true;
+    needValuesRedraw = true;   // vain arvot
   }
 
   if (plus) {
-    cfg.setpointC += 0.5;   // tai cfg.setpointC, jos käytät structia
+    cfg.setpointC += 0.5;
     if (cfg.setpointC > SETPOINT_MAX_C) cfg.setpointC = SETPOINT_MAX_C;
-    lcdDirty = true;
+    needValuesRedraw = true;
   }
-
 
   if (enter) {
     uiScreen = SCREEN_MENU;
     menuIndex = 0;
     menuEditMode = false;
-    lcdDirty = true;
+    blinkOn = true;
+    lastBlinkToggle = now;
+
+    menuFirstVisible = calcMenuFirstVisible(); // alusta scroll-ikkuna
+    needFullRedraw  = true;                    // piirretään koko menuruutu
   }
 }
 
@@ -538,20 +556,21 @@ void handleUiMenu(bool back, bool plus, bool minus, bool enter) {
   if (!menuEditMode) {
     // --- SELAUSMoodi ---
     if (back) {
-      // Takaisin kotiruutuun
       uiScreen = SCREEN_HOME;
-      lcdDirty = true;
+      needFullRedraw = true;
       return;
     }
 
-    // MINUS = "alas" listalla
+    bool indexChanged = false;
+
+    // MINUS = "ylös" listalla
     if (minus) {
       if (menuIndex == 0) {
         menuIndex = MENU_ITEM_COUNT - 1;
       } else {
         menuIndex--;
       }
-      lcdDirty = true;
+      indexChanged = true;
     }
 
     // PLUS = "alas" listalla
@@ -560,28 +579,32 @@ void handleUiMenu(bool back, bool plus, bool minus, bool enter) {
       if (menuIndex >= MENU_ITEM_COUNT) {
         menuIndex = 0;
       }
-      lcdDirty = true;
+      indexChanged = true;
     }
 
+    if (indexChanged) {
+      updateMenuScrollWindow();   // päättää itse full vs. values redraw
+    }
 
     if (enter) {
-      // MENU valinta:
       if (menuIndex == MENU_ITEM_HISTORY) {
-        // Siirry historiaruutuun (stub toistaiseksi)
         uiScreen = SCREEN_HISTORY;
-        lcdDirty = true;
+        needFullRedraw = true;
       } else {
-        // Mennään editointitilaan valitun asetuksen kanssa
         startEditForCurrentMenuItem();
         menuEditMode = true;
-        lcdDirty = true;
+        blinkOn = true;
+        lastBlinkToggle = now;
+        needValuesRedraw = true;  // arvot näkyviin vilkutusta varten
       }
     }
+
   } else {
     // --- EDIT-moodi ---
     handleUiMenuEdit(back, plus, minus, enter);
   }
 }
+
 
 void startEditForCurrentMenuItem() {
   switch (menuIndex) {
@@ -596,6 +619,10 @@ void startEditForCurrentMenuItem() {
     case MENU_ITEM_MIN_DELAY:
       editValue = cfg.relayDelay;  // suoraan minuutit
       break;
+
+    case MENU_ITEM_ALLOW_FAN_OFF:
+      editValue = (cfg.allowFanOff ? 1.0 : 0.0);
+      break;
   }
 }
 
@@ -605,76 +632,92 @@ void handleUiMenuEdit(bool back, bool plus, bool minus, bool enter) {
 
   if (minus) {
     switch (menuIndex) {
+
       case MENU_ITEM_SETPOINT:
         editValue -= 0.5;
         if (editValue < SETPOINT_MIN_C) editValue = SETPOINT_MIN_C;
         break;
+
       case MENU_ITEM_HYSTERESIS:
         editValue -= 0.1;
         if (editValue < HYST_MIN_C) editValue = HYST_MIN_C;
         break;
+
       case MENU_ITEM_MIN_DELAY:
         if (editValue > RELAY_MIN_DELAY) {
           editValue -= 1;
         }
         break;
+
+      case MENU_ITEM_ALLOW_FAN_OFF:
+        editValue = (editValue > 0.5) ? 0.0 : 1.0;  // toggle ON→OFF / OFF→ON
+        break;
     }
-    lcdDirty = true;
+    needValuesRedraw = true;
   }
 
   if (plus) {
     switch (menuIndex) {
+
       case MENU_ITEM_SETPOINT:
-        editValue += 0.5;   // askelkoko
+        editValue += 0.5;
         if (editValue > SETPOINT_MAX_C) editValue = SETPOINT_MAX_C;
         break;
+
       case MENU_ITEM_HYSTERESIS:
         editValue += 0.1;
         if (editValue > HYST_MAX_C) editValue = HYST_MAX_C;
         break;
+
       case MENU_ITEM_MIN_DELAY:
         if (editValue < RELAY_MAX_DELAY) {
           editValue += 1;
         }
         break;
+
+      case MENU_ITEM_ALLOW_FAN_OFF:
+        editValue = (editValue > 0.5) ? 0.0 : 1.0;  // toggle myös PLUS:lla
+        break;
     }
-    lcdDirty = true;
+    needValuesRedraw = true;
   }
 
-  // BACK: peruuta, palaa selaustilaan muuttamatta asetuksia
   if (back) {
     menuEditMode = false;
-    lcdDirty = true;
+    needValuesRedraw = true;   // palautetaan "normaalit" arvot näkyviin
     return;
   }
 
-  // ENTER: hyväksy, kopioi editValue -> varsinaisiin asetuksiin
   if (enter) {
     switch (menuIndex) {
+
       case MENU_ITEM_SETPOINT:
         cfg.setpointC = editValue;
         break;
+
       case MENU_ITEM_HYSTERESIS:
         cfg.hysteresisC = editValue;
         break;
+
       case MENU_ITEM_MIN_DELAY:
         cfg.relayDelay = (uint8_t)(editValue + 0.5);
+        break;
+
+      case MENU_ITEM_ALLOW_FAN_OFF:
+        cfg.allowFanOff = (editValue > 0.5) ? 1 : 0;
         break;
     }
 
     menuEditMode = false;
-    
     saveSettings();
-    
-    lcdDirty = true;
+    needValuesRedraw = true;
   }
 }
 
 void handleUiHistory(bool back, bool plus, bool minus, bool enter) {
-  // Toistaiseksi: ainoa järkevä toiminto on Back -> takaisin kotiruutuun
   if (back || enter) {
     uiScreen = SCREEN_HOME;
-    lcdDirty = true;
+    needFullRedraw = true;
   }
 }
 
@@ -690,114 +733,174 @@ void getMenuLabel(uint8_t index, char *dst, uint8_t dstSize) {
 
 
 void updateDisplay() {
-  // vilkutuslogiikka edit-tilaa varten
+  // Vilkutus edit-tilassa menussa (vain valitun rivin arvo)
   if (uiScreen == SCREEN_MENU && menuEditMode) {
     if (now - lastBlinkToggle >= BLINK_INTERVAL_MS) {
       lastBlinkToggle = now;
       blinkOn = !blinkOn;
-      drawMenuSelectedValueOnly();
+      drawMenuSelectedValueOnly();   // piirtää vain editValue-alueen
     }
   }
 
-  // jos mikään ei ole muuttunut eikä vilkutus vaadi piirtämistä -> ulos
-  if (!lcdDirty) {
+  // KOKO RUUDUN PÄIVITYS (layout + arvot)
+  if (needFullRedraw) {
+    lastLcdUpdateTime = now;
+    needFullRedraw  = false;
+    needValuesRedraw = false;
+    lcd.clear();
+    switch (uiScreen) {
+      case SCREEN_HOME:
+        drawHomeScreen();
+        break;
+
+      case SCREEN_MENU:
+        drawMenuScreen();   // static + dynamic
+        break;
+
+      case SCREEN_HISTORY:
+        drawHistoryScreen();
+        break;
+    }
     return;
   }
 
-  lcdDirty = false;   // tyhjennetään flagi heti, ettei jää kellumaan
+  if (needValuesRedraw) {
+    lastLcdUpdateTime = now;
+    needValuesRedraw = false;
 
-  lcd.clear();
+    switch (uiScreen) {
+      case SCREEN_HOME:
+        drawHomeValues();
+        break;
 
-  switch (uiScreen) {
-    case SCREEN_HOME:
-      drawHomeScreen();
-      break;
+      case SCREEN_MENU:
+        drawMenuDynamic();   // vain nuoli + arvot
+        break;
 
-    case SCREEN_MENU:
-      drawMenuScreen();
-      break;
+      default:
+        break;
+    }
+    return;
+  }
 
-    case SCREEN_HISTORY:
-      drawHistoryScreen();
-      break;
+  // HOME-ruudun ajastettu päivitys (lämpö, RH)
+  if (uiScreen == SCREEN_HOME &&
+      (now - lastLcdUpdateTime) >= LCD_UPDATE_INTERVAL_MS) {
+    lastLcdUpdateTime = now;
+    drawHomeValues();
   }
 }
-
 
 /* =========================================================================
    LCD:N PÄIVITYS
-   -------------------------------------------------------------------------
-   20x4-näyttö:
-   Rivi 0: Mitattu lämpö ja RH
-   Rivi 1: Setpoint ja hystereesi
-   Rivi 2: Puhaltimen porras
-   Rivi 3: dT (ero setpointtiin) ja hystereesi
    ========================================================================= */
 void drawHomeScreen() {
   lcd.setCursor(0, 0);
-  lcd.print(F("T:"));
-  lcd.print(currentTempC, 1);
+  lcd.print(F("Temp:    "));
   lcd.print((char)223);   // aste-merkki
   lcd.print(F("C  "));
-  lcd.print(F("RH:"));
-  lcd.print(currentHumRH, 1);
-  lcd.print(F("%   "));
+  lcd.print(F("RH:   "));
+  lcd.print(F("%"));
 
   lcd.setCursor(0, 1);
   lcd.print(F("Fan step: "));
-  lcd.print(currentFanStep);
   lcd.print(F("      "));   // tyhjennä loppu
 
   lcd.setCursor(0, 3);
-  lcd.print(F("SetT:"));
-  lcd.print(cfg.setpointC, 1);
+  lcd.print(F("SetT:    "));
+
   lcd.print((char)223);
   lcd.print(F("C "));
-  lcd.print(F("Hy:"));
-  lcd.print(cfg.hysteresisC, 1);
+  lcd.print(F("Hy:   "));
+
   lcd.print((char)223);
   lcd.print(F("C"));
+  drawHomeValues();
 }
 
+void drawHomeValues() {
+  lcd.setCursor(5, 0);
+  if (currentTempC < 10) lcd.print(" ");
+  lcd.print(currentTempC, 1);
+
+  lcd.setCursor(16, 0);
+  if (currentHumRH < 100) lcd.print(" ");
+  if (currentHumRH < 10) lcd.print(" ");
+  lcd.print(currentHumRH, 0);
+
+  lcd.setCursor(10, 1);
+  lcd.print(currentFanStep);
+
+  lcd.setCursor(5, 4);
+  if (cfg.setpointC < 10) lcd.print(" ");
+  lcd.print(cfg.setpointC, 1);
+
+  lcd.setCursor(15, 4);
+  lcd.print(cfg.hysteresisC, 1);
+}
+
+
+
 void drawMenuScreen() {
-  // Selvitä, mikä item näkyy ylimmällä rivillä (scrollaus)
-  uint8_t firstVisible = 0;
-  const uint8_t maxVisible = 4;
+  drawMenuStatic();
+  drawMenuDynamic();
+}
 
-  if (MENU_ITEM_COUNT > maxVisible) {
-    if (menuIndex <= 1) {
-      firstVisible = 0;
-    } else if (menuIndex >= MENU_ITEM_COUNT - 2) {
-      firstVisible = MENU_ITEM_COUNT - maxVisible;
-    } else {
-      firstVisible = menuIndex - 1;
-    }
-  }
 
-  for (uint8_t row = 0; row < maxVisible; row++) {
-    uint8_t idx = firstVisible + row;
+void drawMenuStatic() {
+  for (uint8_t row = 0; row < MENU_VISIBLE_ROWS; row++) {
+    uint8_t idx = menuFirstVisible + row;
 
-    // 1) Tyhjennä rivi kokonaan
+    // Aloita nuolikolumnista
     lcd.setCursor(0, row);
-    lcd.print(F("                    "));  // 20 välilyöntiä
-    lcd.setCursor(0, row);            // takaisin rivin alkuun
 
     if (idx >= MENU_ITEM_COUNT) {
-      continue; // ei mitään tälle riville
+      // Tyhjä rivi: tyhjennetään koko rivi
+      lcd.print(F("                    "));
+      continue;
     }
 
-    bool isSelected = (idx == menuIndex);
-    bool useEditVal = (menuEditMode && isSelected);
+    // Nuolipaikka tyhjänä (nuoli tulee dynaamisessa piirrossa)
+    lcd.print(' ');
 
-    // 2) Nuoli + label vasemmalle
-    lcd.print(isSelected ? '>' : ' ');
-
+    // Label
     getMenuLabel(idx, lcdLine, sizeof(lcdLine));
     lcd.print(lcdLine);
 
-    // 3) Arvot kiinteästä kolumnista eteenpäin
-    const uint8_t colVal = 14;
-    lcd.setCursor(colVal, row);
+    // Tyhjennä label-alueen loppu arvokolumniin asti
+    uint8_t labelLen = strlen(lcdLine);
+    uint8_t col = 1 + labelLen;
+    while (col < MENU_VALUE_COL) {
+      lcd.print(' ');
+      col++;
+    }
+  }
+}
+
+void drawMenuDynamic() {
+  for (uint8_t row = 0; row < MENU_VISIBLE_ROWS; row++) {
+    uint8_t idx = menuFirstVisible + row;
+
+    // Nuoli
+    lcd.setCursor(0, row);
+    if (idx < MENU_ITEM_COUNT && idx == menuIndex) {
+      lcd.print('>');
+    } else {
+      lcd.print(' ');
+    }
+
+    // Arvo
+    lcd.setCursor(MENU_VALUE_COL, row);
+
+    // Tyhjennetään arvoalue ensin
+    lcd.print(F("      "));
+    lcd.setCursor(MENU_VALUE_COL, row);
+
+    if (idx >= MENU_ITEM_COUNT) {
+      continue;
+    }
+
+    bool useEditVal = (menuEditMode && idx == menuIndex);
 
     switch (idx) {
       case MENU_ITEM_HISTORY:
@@ -806,12 +909,10 @@ void drawMenuScreen() {
 
       case MENU_ITEM_SETPOINT: {
           double v = useEditVal ? editValue : cfg.setpointC;
-          int ip = (int)v;          // kokonaisosa
-          if (ip < 10) {
-            lcd.print(' ');         // yksi space eteen, jos yksinumeroinen
-          }
-          lcd.print(v, 1);          // esim. "25.0"
-          lcd.print((char)223);     // aste
+          int ip = (int)v;
+          if (ip < 10) lcd.print(' ');
+          lcd.print(v, 1);
+          lcd.print((char)223);
           lcd.print('C');
           break;
         }
@@ -819,33 +920,40 @@ void drawMenuScreen() {
       case MENU_ITEM_HYSTERESIS: {
           double v = useEditVal ? editValue : cfg.hysteresisC;
           int ip = (int)v;
-          if (ip < 10) {
-            lcd.print(' ');
-          }
-          lcd.print(v, 1);          // "1.0"
-          lcd.print((char)223);     // aste
+          if (ip < 10) lcd.print(' ');
+          lcd.print(v, 1);
+          lcd.print((char)223);
           lcd.print('C');
           break;
         }
 
       case MENU_ITEM_MIN_DELAY: {
-          // editValue = double, cfg.relayDelay = uint8_t (minuutteja)
           uint8_t v = useEditVal
                       ? (uint8_t)(editValue + 0.5)
                       : cfg.relayDelay;
-
-          // 1–9  -> " 5min"
-          // 10–99-> "15min"
-          if (v < 10) {
-            lcd.print(' ');
-          }
+          if (v < 10) lcd.print(' ');
           lcd.print(v);
           lcd.print(F(" min"));
           break;
         }
+      
+      case MENU_ITEM_ALLOW_FAN_OFF: {
+          uint8_t v = useEditVal
+                      ? (editValue > 0.5 ? 1 : 0)
+                      : cfg.allowFanOff;
+
+          if (v) {
+            lcd.print(F("   YES"));
+          } else {
+            lcd.print(F("    NO"));
+          }
+          break;
+        }
+
     }
   }
 }
+
 
 
 void drawHistoryScreen() {
@@ -855,38 +963,46 @@ void drawHistoryScreen() {
   lcd.print(F("BACK: kotiin"));
 }
 
-void drawMenuSelectedValueOnly() {
-  // Sama scrollilogiikka kuin drawMenuScreenissä, jotta löydetään valitun rivin row
-  const uint8_t maxVisible = 4;
-  uint8_t firstVisible = 0;
-
-  if (MENU_ITEM_COUNT > maxVisible) {
-    if (menuIndex <= 1) {
-      firstVisible = 0;
-    } else if (menuIndex >= MENU_ITEM_COUNT - 2) {
-      firstVisible = MENU_ITEM_COUNT - maxVisible;
-    } else {
-      firstVisible = menuIndex - 1;
-    }
+uint8_t calcMenuFirstVisible() {
+  if (MENU_ITEM_COUNT <= MENU_VISIBLE_ROWS) {
+    return 0;
   }
 
-  // Laske, millä rivillä valittu item on
-  int8_t row = (int8_t)menuIndex - (int8_t)firstVisible;
-  if (row < 0 || row >= (int8_t)maxVisible) return; // ei ruudulla
+  if (menuIndex <= 1) {
+    return 0;
+  } else if (menuIndex >= MENU_ITEM_COUNT - 2) {
+    return MENU_ITEM_COUNT - MENU_VISIBLE_ROWS;
+  } else {
+    return menuIndex - 1;
+  }
+}
 
-  const uint8_t col = 14; // missä numerot alkaa
+void updateMenuScrollWindow() {
+  uint8_t newFirst = calcMenuFirstVisible();
+  if (newFirst != menuFirstVisible) {
+    menuFirstVisible = newFirst;
+    // näkyvät tekstirivit muuttuvat -> staattinen + dynaaminen uusiksi
+    needFullRedraw = true;
+  } else {
+    // samat rivit näkyvissä -> riittää nuoli + arvot
+    needValuesRedraw = true;
+  }
+}
 
+
+void drawMenuSelectedValueOnly() {
+  int8_t row = (int8_t)menuIndex - (int8_t)menuFirstVisible;
+  if (row < 0 || row >= (int8_t)MENU_VISIBLE_ROWS) return;
+
+  const uint8_t col = MENU_VALUE_COL;
   lcd.setCursor(col, row);
 
   if (!blinkOn) {
-    // piilota arvo vilkutuksen OFF-vaiheessa
-    for (uint8_t i = col; i < 20; i++) {
-      lcd.print(' ');
-    }
+    // tyhjennä arvoalue vilkkua varten
+    lcd.print(F("      "));
     return;
   }
 
-  // blinkOn == true -> printataan arvo (editValue)
   switch (menuIndex) {
     case MENU_ITEM_SETPOINT:
       if (editValue < 10) lcd.print(' ');
@@ -902,44 +1018,53 @@ void drawMenuSelectedValueOnly() {
       lcd.print('C');
       break;
 
-    case MENU_ITEM_MIN_DELAY:
-      if (editValue < 10) lcd.print(' ');
-      lcd.print(editValue, 0);
-      lcd.print(F(" min"));
-      break;
+    case MENU_ITEM_MIN_DELAY: {
+        uint8_t v = (uint8_t)(editValue + 0.5);
+        if (v < 10) lcd.print(' ');
+        lcd.print(v);
+        lcd.print(F(" min"));
+        break;
+      }
+
+    case MENU_ITEM_ALLOW_FAN_OFF: {
+        uint8_t v = (editValue > 0.5 ? 1 : 0);
+        if (v) {
+          lcd.print(F("   YES"));
+        } else {
+          lcd.print(F("    NO"));
+        }
+        break;
+      }
+
 
     default:
       break;
   }
-
-/*  // tyhjennä rivin loppu, jos jäi roskaa
-  int len = 20 - col - 3; // vähän tilaa
-  for (int i = 0; i < len; i++) {
-    lcd.print(' ');
-  }*/
 }
 
+
+
 void saveSettings() {
-//  dumpSettings(cfg, F("Ennen CRC:tä (RAM)"));
+  //  dumpSettings(cfg, F("Ennen CRC:tä (RAM)"));
 
   cfg.crc = calcCRC((uint8_t*)&cfg, sizeof(Settings) - 1); // CRC viimeiseen tavuun
 
-//  Serial.print(F("Tallennus alkaa - crc = "));
-//  Serial.println(cfg.crc);
+  //  Serial.print(F("Tallennus alkaa - crc = "));
+  //  Serial.println(cfg.crc);
 
   EEPROM.put(0, cfg);
 
-/*  Serial.println(F("Tallennus valmis"));
+  /*  Serial.println(F("Tallennus valmis"));
 
-  // Lue takaisin heti ja dumppaa, niin näet mitä oikeasti meni EEPROMiin
-  Settings verify;
-  EEPROM.get(0, verify);
-  dumpSettings(verify, F("Luettu heti EEPROMista"));
+    // Lue takaisin heti ja dumppaa, niin näet mitä oikeasti meni EEPROMiin
+    Settings verify;
+    EEPROM.get(0, verify);
+    dumpSettings(verify, F("Luettu heti EEPROMista"));
   */
 }
 
 /*
-void dumpSettings(const Settings &s, const __FlashStringHelper *tag) {
+  void dumpSettings(const Settings &s, const __FlashStringHelper *tag) {
   Serial.println(tag);
   Serial.print(F("  setpointC   = ")); Serial.println(s.setpointC, 3);
   Serial.print(F("  hysteresisC = ")); Serial.println(s.hysteresisC, 3);
@@ -949,7 +1074,7 @@ void dumpSettings(const Settings &s, const __FlashStringHelper *tag) {
   Serial.print(s.versionMinor); Serial.print('.');
   Serial.println(s.versionPatch);
   Serial.print(F("  crc         = ")); Serial.println(s.crc);
-}*/
+  }*/
 
 bool loadSettings() {
   Settings tmp;
